@@ -9,7 +9,25 @@
 #|        |           |                           |                    |          |
 #+--------+-----------+---------------------------+--------------------+----------+
 
+###################### Script Setup ######################
+#+-------------------+------------------+
+#| Name              | Value            |
+#+-------------------+------------------+
+#| Access Level      | All              |
+#+-------------------+------------------+
+#| Type              | Maintenance Task |
+#+-------------------+------------------+
+#| Hidden            | No               |
+#+-------------------+------------------+
+#| Action Type       | PowerShell       |
+#+-------------------+------------------+
+#| Timeout           | Default          |
+#+-------------------+------------------+
+#| Execution Context | Metascript       |
+#+-------------------+------------------+
 
+# Below module is flattened ITGlue module
+# https://github.com/itglue/powershellwrapper
 
 Set-Variable -Name "ITGlue_Headers" -Value @{} -Scope global -Force
 Set-Variable -Name "ITGlue_JSON_Conversion_Depth" -Value 100 -Scope global -Force
