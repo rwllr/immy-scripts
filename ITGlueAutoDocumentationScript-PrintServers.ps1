@@ -3990,7 +3990,7 @@ foreach ($FlexAssetBody in $FlexAssetArray) {
 
     #$FlexAssetBody.attributes.traits.'printer-driver'
     #Upload data to IT-Glue. We try to match the Server name to current computer name.
-    $ExistingFlexAsset = $AllPrinterAssets | Where-Object { $_.attributes.traits.name -eq $printerconf.PrinterName }
+    $ExistingFlexAsset = $AllPrinterAssets | Where-Object { $_.attributes.traits.'printer-name' -eq $FlexAssetBody.attributes.traits.'printer-name' }
     #If the Asset does not exist, we edit the body to be in the form of a new asset, if not, we just upload.
     $FlexAssetBody.attributes.traits.add('print-server', $computerAssetID)
     if (!$ExistingFlexAsset) {
