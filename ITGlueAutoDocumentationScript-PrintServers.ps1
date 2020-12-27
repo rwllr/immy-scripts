@@ -3743,24 +3743,33 @@ function Set-ITGlueUsers {
     $data = $rest_output
     return $data
 }
-
-
-
-
-$FlexAssetName = "Printers"
-$Description = "All configuration settings for printers and a backup of their respective drivers"
-$TableStyling = "<th>", "<th style=`"background-color:#4CAF50`">"
-$InstallPrintManagement = $true
-$BackupDriver = $true
-$RmmComputer = (Get-RmmComputer -Computer $(Get-ImmyComputer) -ProviderType CWAutomate).RmmDeviceId
-
+<#
+### CURRENTLY NOT WORKING DUE TO REFRESH TOKEN ISSUES ### AWAITING DARRENDK FIX ###
+$Headers = Get-ImmyAzureAuthHeader
+$KeyVault = "https://scripted-documentation.vault.azure.net/secrets/ITGlue-API-Key?api-version=7.1"
+Invoke-RestMethod -Uri $KeyVault -Headers $Headers
+#>
+#Settings IT-Glue logon information
 Add-ITGlueBaseURI -base_uri $APIURL
 Add-ITGlueAPIKey $APIKEy
 
+<# 
+import-module SecureScore -usewindowspowershell
+import-module PsWriteHTML
+Import-module ITGlueAPI
+Import-Module AzureAD -usewindowspowershell
+import-module MSOnline -usewindowspowershell
+#>
 
-#Checking if the FlexibleAsset exists. If not, create a new one.
+########################## IT-Glue Asset Setup/Creation Start ############################
+$FlexAssetName = "O365 Teams"
+$Description = "Documentation of Microsoft Teams."
+$TableStyling = "<th>", "<th style=`"padding:4px;background-color:#01A0D8;color:#FFFFFF;`">"
+
+write-host "Checking if Flexible Asset exists in IT-Glue." -foregroundColor green
 $FilterID = (Get-ITGlueFlexibleAssetTypes -filter_name $FlexAssetName).data
 if (!$FilterID) { 
+    write-host "Does not exist, creating new." -foregroundColor green
     $NewFlexAssetData = 
     @{
         type          = 'flexible-asset-types'
@@ -3776,7 +3785,7 @@ if (!$FilterID) {
                         type       = "flexible_asset_fields"
                         attributes = @{
                             order           = 1
-                            name            = "Printer Name"
+                            name            = "Team Name"
                             kind            = "Text"
                             required        = $true
                             "show-in-list"  = $true
@@ -3786,28 +3795,30 @@ if (!$FilterID) {
                     @{
                         type       = "flexible_asset_fields"
                         attributes = @{
-                            order          = 2
-                            name           = "Printer Config"
-                            kind           = "Text"
-                            required       = $false
-                            "show-in-list" = $true
+                            order           = 2
+                            name            = "Team ID"
+                            kind            = "Text"
+                            required        = $true
+                            "show-in-list"  = $true
+                            "use-for-title" = $false
                         }
                     },
                     @{
                         type       = "flexible_asset_fields"
                         attributes = @{
-                            order          = 3
-                            name           = "Port Config"
-                            kind           = "Textbox"
-                            required       = $false
-                            "show-in-list" = $false
+                            order           = 3
+                            name            = "Team URL"
+                            kind            = "Text"
+                            required        = $true
+                            "show-in-list"  = $false
+                            "use-for-title" = $false
                         }
                     },
                     @{
                         type       = "flexible_asset_fields"
                         attributes = @{
                             order          = 4
-                            name           = "Printer Properties"
+                            name           = "Team Message settings"
                             kind           = "Textbox"
                             required       = $false
                             "show-in-list" = $false
@@ -3817,7 +3828,7 @@ if (!$FilterID) {
                         type       = "flexible_asset_fields"
                         attributes = @{
                             order          = 5
-                            name           = "Printer Driver"
+                            name           = "Team Member settings"
                             kind           = "Textbox"
                             required       = $false
                             "show-in-list" = $false
@@ -3827,187 +3838,180 @@ if (!$FilterID) {
                         type       = "flexible_asset_fields"
                         attributes = @{
                             order          = 6
-                            name           = "Print Server"
-                            kind           = "Tag"
-                            "tag-type"     = "Configurations"
+                            name           = "Team Guest settings"
+                            kind           = "Textbox"
                             required       = $false
-                            "show-in-list" = $true
+                            "show-in-list" = $false
+                        }
+                    },
+                    @{
+                        type       = "flexible_asset_fields"
+                        attributes = @{
+                            order          = 7
+                            name           = "Team Fun Settings"
+                            kind           = "Textbox"
+                            required       = $false
+                            "show-in-list" = $false
+                        }
+                    },
+                    @{
+                        type       = "flexible_asset_fields"
+                        attributes = @{
+                            order          = 8
+                            name           = "Team Channels"
+                            kind           = "Textbox"
+                            required       = $false
+                            "show-in-list" = $false
+                        }
+                    },
+                    @{
+                        type       = "flexible_asset_fields"
+                        attributes = @{
+                            order          = 9
+                            name           = "Team Owners"
+                            kind           = "Textbox"
+                            required       = $false
+                            "show-in-list" = $false
+                        }
+                    },
+                    @{
+                        type       = "flexible_asset_fields"
+                        attributes = @{
+                            order          = 10
+                            name           = "Team Members"
+                            kind           = "Textbox"
+                            required       = $false
+                            "show-in-list" = $false
+                        }
+                    },                    @{
+                        type       = "flexible_asset_fields"
+                        attributes = @{
+                            order          = 11
+                            name           = "Team Guests"
+                            kind           = "Textbox"
+                            required       = $false
+                            "show-in-list" = $false
                         }
                     }
+                       
+   
+   
                 )
             }
         }
-                 
     }
     New-ITGlueFlexibleAssetTypes -Data $NewFlexAssetData
     $FilterID = (Get-ITGlueFlexibleAssetTypes -filter_name $FlexAssetName).data
-} 
+}
 
-###################### Variable Setup ######################
-Write-Host "RMM Computer ID is: $AutomateComputerID"
-$RMM_Asset = (Get-ITGlueConfigurations -filter_rmm_integration_type automate -filter_rmm_id $RmmComputer).data
- $orgID = $RMM_Asset.attributes.'organization-id'
- Write-Host "ITGlue Org ID is: $orgID"
- $computerAssetID = $RMM_Asset.id
- Write-Host "RMM Computer ID is: $computerAssetID"
-$FlexAssetName = "File Share Permissions"
-$Description = "File Share Permissions (Auto Documented)"
-$TagRelatedDevices = $true
-$HTMLBody = @()
+########################## IT-Glue Asset Setup/Creation End ############################
 
-#Only continue if we've succesfully matched to an ITGlue Org ID.
-#Otherwise there's no point in trying to document. 
-if ($orgID) {
+########################## IT-Glue Contact & Domain Filtering Start ############################
+write-host "Getting IT-Glue contact list" -ForegroundColor Green
+$i = 0
+do {
+    $AllITGlueContacts += (Get-ITGlueContacts -page_size 1000 -page_number $i).data.attributes
+    $i++
+    Write-Host "Retrieved $($AllITGlueContacts.count) Contacts" -ForegroundColor Yellow
+}while ($AllITGlueContacts.count % 1000 -eq 0 -and $AllITGlueContacts.count -ne 0) 
+write-host "Generating unique ID List" -ForegroundColor Green
 
 
-#Tagging devices
-<#    $DeviceAsset = @()
-    If($TagRelatedDevices -eq $true){
-        Write-Host "Finding all related resources - Based on computername: $ENV:COMPUTERNAME"
-        $DeviceAsset += (Get-ITGlueConfigurations -page_size "1000" -filter_name $ENV:COMPUTERNAME -organization_id $orgID).data
-        } 
-#>   
-
-###################### Get all existing assets for API call optimisation ######################
-$AllPrinterAssets = (Get-ITGlueFlexibleAssets -page_size 1000 -filter_flexible_asset_type_id $FilterID.id -filter_organization_id $org).data
-
-
-$FlexAssetArray = Invoke-ImmyCommand {
-
-    function Transpose-Object
-    { [CmdletBinding()]
-    Param([OBJECT][Parameter(ValueFromPipeline = $TRUE)]$InputObject)
-
-    BEGIN
-    { # initialize variables just to be "clean"
-        $Props = @()
-        $PropNames = @()
-        $InstanceNames = @()
+$DomainList = $AllITGlueContacts | %{
+    $Contact = $_
+    $ITGDomain = ($contact.'contact-emails'.value -split "@")[1]
+    $ContactOrgID = ($Contact.'organization-id').ToString()
+    New-Object PSObject -Property @{
+        Domain   = $ITGDomain
+        OrgID    = $Contact.'organization-id'
+        Combined = "$($ITGDomain)$($ContactOrgID)"
     }
+} #| Group Combined #| %{$_.Name}
+$DomainList = $DomainList | sort-object -Property Combined -Unique
+#$DomainList #| %{$_.Group}
 
-    PROCESS
-    {
-        if ($Props.Length -eq 0)
-        { # when first object in pipeline arrives retrieve its property names
-                $PropNames = $InputObject.PSObject.Properties | Select-Object -ExpandProperty Name
-                # and create a PSCustomobject in an array for each property
-                $InputObject.PSObject.Properties | %{ $Props += New-Object -TypeName PSObject -Property @{Property = $_.Name} }
-            }
-
-            if ($InputObject.Name)
-            { # does object have a "Name" property?
-                $Property = $InputObject.Name
-            } else { # no, take object itself as property name
-                $Property = $InputObject | Out-String
-            }
-
-            if ($InstanceNames -contains $Property)
-            { # does multiple occurence of name exist?
-            $COUNTER = 0
-                do { # yes, append a number in brackets to name
-                    $COUNTER++
-                    $Property = "$($InputObject.Name) ({0})" -f $COUNTER
-                } while ($InstanceNames -contains $Property)
-            }
-            # add current name to name list for next name check
-            $InstanceNames += $Property
-
-        # retrieve property values and add them to the property's PSCustomobject
-        $COUNTER = 0
-        $PropNames | %{
-            if ($InputObject.($_))
-            { # property exists for current object
-                $Props[$COUNTER] | Add-Member -Name $Property -Type NoteProperty -Value $InputObject.($_)
-            } else { # property does not exist for current object, add $NULL value
-                $Props[$COUNTER] | Add-Member -Name $Property -Type NoteProperty -Value $NULL
-            }
-                $COUNTER++
-        }
+# Get a list of domains for the customer to do ITGlue matching
+$Headers = Get-ImmyAzureAuthHeader
+$GraphURI = "https://graph.microsoft.com/beta/domains"
+    $customerdomains = (Invoke-RestMethod -Uri $GraphURI -Headers $Headers).value.id
+    $customerdomains
+    write-host "Finding possible organisation IDs" -ForegroundColor Green
+    $orgid = foreach ($customerDomain in $customerdomains) {
+        ($domainList | Where-Object { $_.domain -eq $customerDomain }).'OrgID' | Select-Object -Unique
     }
+    $orgid
+########################## IT-Glue Contact & Domain Filtering End ############################
 
-    END
-    {
-        # return collection of PSCustomobjects with property values
-        $Props
-    }
-    }
+#### Get Existing Assets for Matching Later On ####
+$AllTeamsAssets = (Get-ITGlueFlexibleAssets -page_size 1000 -filter_flexible_asset_type_id $FilterID.id -filter_organization_id $org).data
+#$AllTeamsAssets
 
-    $TableStyling = $using:TableStyling
-    $BackupDriver = $using:BackupDriver
-    $PrintManagementInstalled = get-windowsfeature -name 'RSAT-Print-Services' -ErrorAction SilentlyContinue
-    if ($InstallPrintManagement -and !$PrintManagementInstalled) {
-        Add-WindowsFeature -Name 'RSAT-Print-Services'
-    }
-    import-module PrintManagement
-    $PrinterList = Get-Printer
-    
-    $PrinterConfigurations = foreach ($Printer in $PrinterList) {
-        $PrinterConfig = Get-PrintConfiguration -PrinterName $printer.Name
-        $PortConfig = get-printerport -Name $printer.PortName
-        $PrinterProperties = Get-PrinterProperty -PrinterName $printer.Name
-        $PrinterDriver = Get-PrinterDriver -Name $printer.DriverName | select Name, ConfigFile, DataFile, DriverVersion, HelpFile, InfPath, MajorVersion, Manufacturer, OEMUrl, Path, PrinterEnvironment, PrintProcessor, provider #| ForEach-Object { $_.InfPath; $_.ConfigFile; $_.DataFile; $_.DependentFiles } | Where-Object { $_ -ne $null }
-        if ($BackupDriver) {
-            #$Driver = Get-PrinterDriver -Name $printer.DriverName | ForEach-Object { $_.InfPath; $_.ConfigFile; $_.DataFile; $_.DependentFiles } | Where-Object { $_ -ne $null }
-            #$BackupPath = new-item -path "$($ENV:TEMP)\$($printer.name)" -ItemType directory -Force
-            
-            #$Driver | foreach-object { copy-item -path $_ -Destination "$($ENV:TEMP)\$($printer.name)" -Force }
-            #Add-Type -assembly "system.io.compression.filesystem"
-            #[io.compression.zipfile]::CreateFromDirectory("$($ENV:TEMP)\$($printer.name)", "$($ENV:TEMP)\$($printer.name).zip")
-            #$ZippedDriver = ([convert]::ToBase64String(([IO.File]::ReadAllBytes("$($ENV:TEMP)\$($printer.name).zip"))))
-            #remove-item "$($ENV:TEMP)\$($printer.name)" -force -Recurse
-            #remove-item "$($ENV:TEMP)\$($printer.name).zip" -force -Recurse
-        }
-        New-Object PSObject -Property @{
-            PrinterName       = $printer.name
-            PrinterConfig     = $PrinterConfig | select-object DuplexingMode, PapierSize, Collate, Color | convertto-html -Fragment | Out-String
-            PortConfig        = $PortConfig  | Select-Object Description, Name, PortNumber, PrinterHostAddress, snmpcommunity, snmpenabled | convertto-html -Fragment | out-string
-            PrinterProperties = $PrinterProperties | Select-Object PropertyName, Value | convertto-html -Fragment | out-string
-            PrinterDriver     = $($PrinterDriver | Transpose-Object | convertto-html -Fragment | out-string) -replace $TableStyling
-        }
-    }
-$FlexAssetArray = @()  
-    foreach ($printerconf in $PrinterConfigurations) {
-        Write-Host $printerconf.ZippedDriver
-        $FlexAsset = 
+$Headers = Get-ImmyAzureAuthHeader
+$KeyVault = "https://graph.microsoft.com/beta/groups?`$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&`$top=999"
+$Teams = (Invoke-RestMethod -Uri $KeyVault -Headers $Headers -Method Get -ContentType "application/json").value
+#$Teams
+    #To converve API calls (necessary due to ITGlue restrictions)
+    #We'll store all updating assets as an array for updating in one shot
+    $ITGlueObjectUpdateArray = @()
+
+    Write-Host "Grabbing all Team Settings" -ForegroundColor Green
+    foreach ($Team in $Teams) {
+        $Settings = (Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/Teams/$($team.id)" -Headers $Headers -Method Get -ContentType "application/json")
+        $Members = (Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/groups/$($team.id)/members?`$top=999" -Headers $Headers -Method Get -ContentType "application/json").value
+        $Owners = (Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/groups/$($team.id)/Owners?`$top=999" -Headers $Headers -Method Get -ContentType "application/json").value
+        $Channels = (Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/teams/$($team.id)/Channels" -Headers $Headers -Method Get -ContentType "application/json").value
+
+  
+        $FlexAssetBody =
         @{
             type       = 'flexible-assets'
             attributes = @{
-                name   = $FlexAssetName
                 traits = @{
-                    "printer-name"       = $printerconf.Printername
-                    "printer-config"     = $printerconf.printerconfig
-                    "port-config"        = $printerconf.portconfig
-                    "printer-properties" = $printerconf.PrinterProperties
-                    "printer-driver"      = $printerconf.PrinterDriver
+                    'team-name'             = $settings.displayname
+                    'team-url'              = $settings.webUrl
+                    'team-id'               = $team.id
+                    'team-message-settings' = ($settings.messagingSettings | convertto-html -Fragment -as list | out-string) -replace $TableStyling
+                    'team-member-settings'  = ($Settings.memberSettings | convertto-html -Fragment -as list | out-string) -replace $TableStyling
+                    "team-guest-settings"   = ($Settings.guestSettings | convertto-html -Fragment -as list | out-string) -replace $TableStyling
+                    "team-fun-settings"     = ($settings.funSettings | convertto-html -Fragment -as list | out-string) -replace $TableStyling
+                    'team-owners'           = ($Owners | Select-Object Displayname, UserPrincipalname | convertto-html -Fragment | out-string) -replace $TableStyling
+                    'team-channels'         = ($Channels | Select-Object Displayname, Description, MembershipType | convertto-html -Fragment | out-string) -replace $TableStyling
+                    'team-members'          = ($Members | Where-Object { $_.UserType -eq "Member" } | Select-Object Displayname, UserPrincipalname | convertto-html -Fragment | out-string) -replace $TableStyling
+                    'team-guests'           = ($Members | Where-Object { $_.UserType -eq "Guest" } | Select-Object Displayname, UserPrincipalname | convertto-html -Fragment | out-string) -replace $TableStyling
                 }
             }
         }
-    $FlexAssetArray += $FlexAsset
+    write-host "   Uploading $($Settings.displayName) into IT-Glue"
+
+
+
+    foreach ($org in $orgID | Select-Object -Unique) {
+        $ExistingFlexAsset = $AllTeamsAssets | Where-Object { $_.attributes.traits.'team-id' -eq $FlexAssetBody.attributes.traits.'team-id' }
+        #If the Asset does not exist, we edit the body to be in the form of a new asset, if not, we just upload.
+        if (!$ExistingFlexAsset) {
+            if ($FlexAssetBody.attributes.'organization-id') {
+                $FlexAssetBody.attributes.'organization-id' = $org
+                $FlexAssetBody.attributes.add('flexible-asset-type-id', $FilterID.id)
+            }
+            else { 
+                $FlexAssetBody.attributes.add('organization-id', $org)
+                $FlexAssetBody.attributes.add('flexible-asset-type-id', $FilterID.id)
+            }
+            write-output "                      Creating new Team: $($Settings.displayName) into IT-Glue organisation $org"
+            New-ITGlueFlexibleAssets -data $FlexAssetBody -Verbose
+  
+        }
+        else {
+            write-output "                      Updating Team: $($Settings.displayName)into IT-Glue organisation $org"
+            $ExistingFlexAsset = $ExistingFlexAsset | select-object -Last 1
+            $FlexAssetBody.attributes.add('id', $ExistingFlexAsset.id)
+            $ITGlueObjectUpdateArray += $FlexAssetBody
+            #Set-ITGlueFlexibleAssets -id $ExistingFlexAsset.id  -data $FlexAssetBody -Verbose
+        }
+  
     }
-return $FlexAssetArray
-} -Timeout 360
-foreach ($FlexAssetBody in $FlexAssetArray) {
 
-    #$FlexAssetBody.attributes.traits.'printer-driver'
-    #Upload data to IT-Glue. We try to match the Server name to current computer name.
-    $ExistingFlexAsset = $AllPrinterAssets | Where-Object { $_.attributes.traits.'printer-name' -eq $FlexAssetBody.attributes.traits.'printer-name' }
-    #If the Asset does not exist, we edit the body to be in the form of a new asset, if not, we just upload.
-    $FlexAssetBody.attributes.traits.add('print-server', $computerAssetID)
-    if (!$ExistingFlexAsset) {
-        $FlexAssetBody.attributes.add('organization-id', $orgID)
-        $FlexAssetBody.attributes.add('flexible-asset-type-id', $FilterID.id)
-        
-        Write-Host "Creating new flexible asset"
-        New-ITGlueFlexibleAssets -data $FlexAssetBody
-        #Set-ITGlueFlexibleAssets -id $newID.ID -data $Attachment
+
     }
-    else {
-        Write-Host "Updating Flexible Asset"
-        $ExistingFlexAsset = $ExistingFlexAsset | select-object -last 1
-        Set-ITGlueFlexibleAssets -id $ExistingFlexAsset.id  -data $FlexAssetBody
-    }
+    Set-ITGlueFlexibleAssets -data $ITGlueObjectUpdateArray -Verbose
 
-
-}
-
-} else { Write-Ouput "Not matched to an ITGlue organisation."}
